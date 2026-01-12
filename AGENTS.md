@@ -28,7 +28,7 @@
 
 Важливі змінні (`configs/.env`):
 - `API_KEY` — ключ доступу.
-- `AUTH_FILE` — шлях до `~/.codex/auth.json`.
+- `AUTH_FILE` — шлях до `configs/auth.json`.
 - `INSTR_TTL_HOURS` — TTL кешу інструкцій.
 - `LOG_UPSTREAM` — SSE логи.
 - `LOG_TOKENS` — логи токенів.

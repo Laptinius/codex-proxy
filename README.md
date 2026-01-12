@@ -15,7 +15,7 @@ docker-compose up --build
 
 Файл `configs/.env`:
 - `API_KEY` — ключ доступу до проксі
-- `AUTH_FILE` — шлях до `~/.codex/auth.json`
+- `AUTH_FILE` — шлях до `configs/auth.json`
 - `INSTR_TTL_HOURS` — TTL кешу інструкцій
 - `LOG_UPSTREAM` — логи SSE (для дебагу)
 - `LOG_TOKENS` — логи токенів
@@ -29,7 +29,7 @@ docker-compose up --build
 
 Приклад:
 ```bash
-curl -X POST http://localhost:8787/v1/chat/completions \
+curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-5.2","use_instructions":true,"messages":[{"role":"user","content":"Привіт"}]}'

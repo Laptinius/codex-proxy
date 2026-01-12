@@ -7,12 +7,10 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - AUTH_FILE=/home/nonroot/.codex/auth.json
+      - AUTH_FILE=/app/configs/auth.json
     volumes:
       - ./codex-proxy:/app/codex-proxy:ro
       - ./configs:/app/configs
-      - ${HOME}/.codex/auth.json:/home/nonroot/.codex/auth.json:ro
     working_dir: /app
     entrypoint: ["/app/codex-proxy"]
     restart: unless-stopped
-880715

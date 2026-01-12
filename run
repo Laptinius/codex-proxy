@@ -10,7 +10,7 @@ set -a
 . "$CONFIG_DIR/.env"
 set +a
 
-AUTH_FILE="${AUTH_FILE:-$HOME/.codex/auth.json}"
+AUTH_FILE="${AUTH_FILE:-$CONFIG_DIR/auth.json}"
 export AUTH_FILE
 
 go run ./cmd/codex-proxy

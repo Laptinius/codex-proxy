@@ -29,11 +29,7 @@ func LoadConfig() (Config, error) {
 	clientID := envOr("CHATGPT_LOCAL_CLIENT_ID", "app_EMoamEEZ73f0CkXaXp7hrann")
 	authFile := os.Getenv("AUTH_FILE")
 	if authFile == "" {
-		if home, err := os.UserHomeDir(); err == nil {
-			authFile = filepath.Join(home, ".codex", "auth.json")
-		} else {
-			authFile = "auth.json"
-		}
+		authFile = filepath.Join("configs", "auth.json")
 	}
 
 	ttlHours := envOr("INSTR_TTL_HOURS", "12")
