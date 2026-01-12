@@ -344,7 +344,7 @@ func writeJSON(w http.ResponseWriter, v any) {
 func writeError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(types.ErrorResponse{Error: types.ErrorBody{Message: message}})
+	_ = json.NewEncoder(w).Encode(types.ErrorResponse{Error: types.ErrorBody{Message: normalizeErrorMessage(message)}})
 }
 
 func nonEmpty(val, fallback string) string {
@@ -448,20 +448,32 @@ func redactUpstreamError(raw []byte) []byte {
 		return raw
 	}
 	if detail, ok := payload["detail"].(map[string]any); ok {
+		if _, has := detail["id"]; has {
+			detail["id"] = "present"
+		}
 		if _, has := detail["instructions"]; has {
-			detail["instructions"] = "є"
+			detail["instructions"] = "present"
 		}
 		if _, has := detail["prompt_cache_key"]; has {
-			detail["prompt_cache_key"] = "є"
+			detail["prompt_cache_key"] = "present"
+		}
+		if _, has := detail["safety_identifier"]; has {
+			detail["safety_identifier"] = "present"
 		}
 		payload["detail"] = detail
 	}
 	if resp, ok := payload["response"].(map[string]any); ok {
+		if _, has := resp["id"]; has {
+			resp["id"] = "present"
+		}
 		if _, has := resp["instructions"]; has {
-			resp["instructions"] = "є"
+			resp["instructions"] = "present"
 		}
 		if _, has := resp["prompt_cache_key"]; has {
-			resp["prompt_cache_key"] = "є"
+			resp["prompt_cache_key"] = "present"
+		}
+		if _, has := resp["safety_identifier"]; has {
+			resp["safety_identifier"] = "present"
 		}
 		payload["response"] = resp
 	}
@@ -485,5 +497,23 @@ func upstreamErrorMessage(raw []byte) string {
 	if detail, ok := payload["detail"].(string); ok && detail != "" {
 		return detail
 	}
+	if detailObj, ok := payload["detail"].(map[string]any); ok {
+		if msg, ok := detailObj["message"].(string); ok && msg != "" {
+			return msg
+		}
+		if errObj, ok := detailObj["error"].(map[string]any); ok {
+			if msg, ok := errObj["message"].(string); ok && msg != "" {
+				return msg
+			}
+		}
+	}
 	return "Upstream error"
+}
+
+func normalizeErrorMessage(message string) string {
+	msg := strings.TrimSpace(message)
+	if msg == "" {
+		return "Upstream error"
+	}
+	return msg
 }

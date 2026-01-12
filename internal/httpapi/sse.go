@@ -31,11 +31,17 @@ func redactSSEData(data string) string {
 	}
 	resp, ok := payload["response"].(map[string]any)
 	if ok {
+		if _, has := resp["id"]; has {
+			resp["id"] = "present"
+		}
 		if _, has := resp["instructions"]; has {
-			resp["instructions"] = "є"
+			resp["instructions"] = "present"
 		}
 		if _, has := resp["prompt_cache_key"]; has {
-			resp["prompt_cache_key"] = "є"
+			resp["prompt_cache_key"] = "present"
+		}
+		if _, has := resp["safety_identifier"]; has {
+			resp["safety_identifier"] = "present"
 		}
 		payload["response"] = resp
 	}
