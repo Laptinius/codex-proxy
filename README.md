@@ -25,6 +25,7 @@ docker-compose up --build
 
 - `POST /v1/chat/completions`
 - `POST /v1/completions`
+- `POST /v1/responses`
 - `GET /v1/models`
 
 Приклад:
@@ -34,3 +35,9 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-5.2","use_instructions":true,"messages":[{"role":"user","content":"Привіт"}]}'
 ```
+
+### /v1/responses та Codex інструкції
+
+Codex потребує системні інструкції. Проксі завжди підставляє власні Codex‑інструкції (еквівалент `use_instructions=true`), а якщо клієнт надіслав `instructions`, вони переносяться в перше повідомлення як `User instructions: ...`.
+
+Для `/v1/responses` проксі автоматично встановлює `store=false`. Якщо клієнт не запитує стрім, проксі все одно робить upstream‑стрім і збирає результат у звичайний JSON‑відповідь.

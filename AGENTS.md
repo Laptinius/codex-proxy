@@ -12,6 +12,7 @@
 Основні ендпоінти:
 - `POST /v1/chat/completions`
 - `POST /v1/completions`
+- `POST /v1/responses`
 - `GET /v1/models`
 
 Ключові файли:
@@ -33,3 +34,11 @@
 - `LOG_UPSTREAM` — SSE логи.
 - `LOG_TOKENS` — логи токенів.
 - `ADDR` — адреса сервера.
+
+## Codex: обов’язкові умови для працездатності
+
+- **Instructions**: Codex потребує системні інструкції завжди. Проксі підставляє власні Codex‑інструкції у поле `instructions` незалежно від запиту.
+- **Клієнтські `instructions`**: якщо клієнт передав `instructions`, їх потрібно переносити в перше повідомлення `input` як текст `User instructions: ...`.
+- **Streaming**: upstream Codex вимагає `stream=true`. Навіть якщо клієнт не просив стрім, проксі має стрімити до upstream і збирати результат у звичайну відповідь.
+- **Store**: upstream Codex вимагає `store=false`. Якщо поле відсутнє — підставляти `false`.
+- **Авторизація**: клієнтський доступ — через `Authorization: Bearer $API_KEY`, а OAuth‑токени Codex беруться з `configs/auth.json` на стороні проксі.

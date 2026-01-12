@@ -25,28 +25,6 @@ type ResponsesRequest struct {
 	ParallelTools bool        `json:"parallel_tool_calls,omitempty"`
 }
 
-type ResponsesResponse struct {
-	ID         string               `json:"id"`
-	Output     []ResponseOutputItem `json:"output,omitempty"`
-	OutputText string               `json:"output_text,omitempty"`
-	Usage      *Usage               `json:"usage,omitempty"`
-	Error      *ResponseError       `json:"error,omitempty"`
-}
-
-type ResponseOutputItem struct {
-	Type    string                `json:"type"`
-	Content []ResponseContentItem `json:"content,omitempty"`
-}
-
-type ResponseContentItem struct {
-	Type string `json:"type"`
-	Text string `json:"text,omitempty"`
-}
-
-type ResponseError struct {
-	Message string `json:"message"`
-}
-
 type Usage map[string]any
 
 type ChatCompletionResponse struct {

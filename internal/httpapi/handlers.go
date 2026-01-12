@@ -34,6 +34,7 @@ func (a *App) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/chat/completions", a.handleChatCompletions)
 	mux.HandleFunc("/v1/completions", a.handleCompletions)
+	mux.HandleFunc("/v1/responses", a.handleResponses)
 	mux.HandleFunc("/v1/models", a.handleModels)
 	mux.HandleFunc("/", a.handleNotFound)
 
@@ -306,6 +307,118 @@ func (a *App) handleCompletions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, out)
 }
 
+func (a *App) handleResponses(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+	if !a.authorize(r) {
+		writeError(w, http.StatusUnauthorized, "Invalid API key")
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid body")
+		return
+	}
+	payload, err := utils.ParseJSONBody(body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+
+	model := utils.NormalizeModelName(stringOr(payload["model"], ""))
+	if model == "" {
+		writeError(w, http.StatusBadRequest, "Request must include model")
+		return
+	}
+
+	streamRequested := false
+	if v, ok := payload["stream"].(bool); ok && v {
+		streamRequested = true
+	}
+
+	instructionsValue, err := a.instructions.Get(r.Context(), model)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "Failed to fetch instructions")
+		return
+	}
+
+	clientInstructions := strings.TrimSpace(stringOr(payload["instructions"], ""))
+	delete(payload, "instructions")
+	payload["instructions"] = instructionsValue
+	payload["store"] = false
+	payload["stream"] = true
+
+	input, ok := payload["input"]
+	if !ok {
+		writeError(w, http.StatusBadRequest, "Request must include input")
+		return
+	}
+
+	inputItems, err := normalizeResponsesInput(input)
+	if err != nil || len(inputItems) == 0 {
+		writeError(w, http.StatusBadRequest, "Request must include input")
+		return
+	}
+
+	if clientInstructions != "" {
+		instructionsItem := responsesInputMessage("User instructions: " + clientInstructions)
+		inputItems = append([]any{instructionsItem}, inputItems...)
+	}
+	payload["input"] = inputItems
+	payload["model"] = model
+
+	rawPayload, err := json.Marshal(payload)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+
+	upstreamResp, status, err := a.upstream.DoRawResponsesStream(r.Context(), rawPayload)
+	if err != nil {
+		log.Printf("upstream error: %v", err)
+		writeError(w, http.StatusBadGateway, "Upstream request failed")
+		return
+	}
+	if upstreamResp == nil || upstreamResp.Body == nil {
+		writeError(w, http.StatusBadGateway, "Upstream request failed")
+		return
+	}
+	defer upstreamResp.Body.Close()
+	if status < 200 || status >= 300 {
+		raw, _ := io.ReadAll(upstreamResp.Body)
+		if len(raw) > 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(status)
+			_, _ = w.Write(raw)
+			return
+		}
+		writeError(w, status, "Upstream request failed")
+		return
+	}
+	if streamRequested {
+		copyUpstreamHeaders(w, upstreamResp.Header)
+		w.WriteHeader(status)
+		_, _ = io.Copy(w, upstreamResp.Body)
+		return
+	}
+
+	text, responseID, usage, err := collectFromSSE(upstreamResp.Body, nil)
+	if err != nil {
+		log.Printf("stream collect error: %v", err)
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	out := buildResponsesResult(model, nonEmpty(responseID, "resp"), text, usage)
+	writeJSON(w, out)
+}
+
 func (a *App) handleModels(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusNoContent)
@@ -431,6 +544,68 @@ func usageNestedInt(usage types.Usage, key, subkey string) int {
 		}
 	}
 	return 0
+}
+
+func normalizeResponsesInput(input any) ([]any, error) {
+	switch v := input.(type) {
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil, nil
+		}
+		return []any{responsesInputMessage(v)}, nil
+	case map[string]any:
+		return []any{v}, nil
+	case []any:
+		return v, nil
+	default:
+		return nil, nil
+	}
+}
+
+func responsesInputMessage(text string) map[string]any {
+	return map[string]any{
+		"type": "message",
+		"role": "user",
+		"content": []any{
+			map[string]any{
+				"type": "input_text",
+				"text": text,
+			},
+		},
+	}
+}
+
+func copyUpstreamHeaders(w http.ResponseWriter, hdr http.Header) {
+	for key, values := range hdr {
+		if key == "" {
+			continue
+		}
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+}
+
+func buildResponsesResult(model, responseID, text string, usage *types.Usage) map[string]any {
+	output := []any{
+		map[string]any{
+			"type": "message",
+			"content": []any{
+				map[string]any{
+					"type": "output_text",
+					"text": text,
+				},
+			},
+		},
+	}
+	return map[string]any{
+		"id":          responseID,
+		"object":      "response",
+		"model":       model,
+		"output":      output,
+		"output_text": text,
+		"usage":       usage,
+	}
 }
 
 func hasNonEmptyMessages(messages []utils.ChatMessage) bool {
