@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   codex-proxy:
     image: gcr.io/distroless/static-debian12:nonroot

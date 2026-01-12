@@ -354,6 +354,7 @@ func (a *App) handleResponses(w http.ResponseWriter, r *http.Request) {
 	payload["instructions"] = instructionsValue
 	payload["store"] = false
 	payload["stream"] = true
+	setDefaultReasoningEffort(payload)
 
 	input, ok := payload["input"]
 	if !ok {
@@ -605,6 +606,22 @@ func buildResponsesResult(model, responseID, text string, usage *types.Usage) ma
 		"output":      output,
 		"output_text": text,
 		"usage":       usage,
+	}
+}
+
+func setDefaultReasoningEffort(payload map[string]any) {
+	reasoningRaw, ok := payload["reasoning"]
+	if !ok {
+		payload["reasoning"] = map[string]any{"effort": "none"}
+		return
+	}
+	reasoning, ok := reasoningRaw.(map[string]any)
+	if !ok {
+		return
+	}
+	if effort, ok := reasoning["effort"].(string); !ok || strings.TrimSpace(effort) == "" {
+		reasoning["effort"] = "none"
+		payload["reasoning"] = reasoning
 	}
 }
 
