@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+CONFIG_DIR="configs"
+if [ ! -f "$CONFIG_DIR/.env" ]; then
+  cp "$CONFIG_DIR/.env.example" "$CONFIG_DIR/.env"
+fi
+
+set -a
+. "$CONFIG_DIR/.env"
+set +a
+
+AUTH_FILE="${AUTH_FILE:-$HOME/.codex/auth.json}"
+export AUTH_FILE
+
+go run ./cmd/codex-proxy

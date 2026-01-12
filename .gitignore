@@ -1,0 +1,33 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/dist/
+/codex-proxy
+/codex-openai-wrapper
+
+# Go workspace and cache
+.gocache/
+
+# Logs
+*.log
+*.tmp
+
+# Local environment files
+.env*
+configs/.env
+configs/.env.*
+
+# Auth tokens and secrets
+auth.json
+auth.json.*
+
+# Examples must stay in git
+!.env.example
+!configs/.env.example
+!configs/auth.json.example
